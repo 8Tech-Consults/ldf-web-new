@@ -26,8 +26,7 @@ class EventController extends AdminController
      */
     protected function grid()
     {
-        $grid = new Grid(new Event());
-        Utils::checkEventRegustration(); 
+        $grid = new Grid(new Event()); 
 
         $grid->column('id', __('Id'));
         $grid->column('created_at', __('Created at'));
