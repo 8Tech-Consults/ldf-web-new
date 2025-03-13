@@ -1,10 +1,20 @@
 <?php
 
-use App\Http\Controllers\ApiAuthController;
-use App\Http\Controllers\ApiResurceController;
-use App\Http\Middleware\EnsureTokenIsValid;
-use Illuminate\Http\Request;
+use App\Http\Controllers\AuthController;
+use App\Http\Controllers\ServiceProviderController;
 use Illuminate\Support\Facades\Route;
+use App\Http\Controllers\VetsController;
+use App\Http\Controllers\FarmerController;
+use App\Http\Controllers\FarmController;
+use App\Http\Controllers\FarmAnimalController;
+use App\Http\Controllers\HealthRecordController;
+use App\Http\Controllers\ProductController;
+use App\Http\Controllers\CartController;
+use App\Http\Controllers\ParavetRequestController;
+use App\Http\Controllers\RatingController;
+use App\Http\Controllers\NotificationController;
+use App\Http\Controllers\UserRoleController;
+use App\Http\Middleware\JWTMiddleware;
 
 /*
 |--------------------------------------------------------------------------
@@ -12,118 +22,94 @@ use Illuminate\Support\Facades\Route;
 |--------------------------------------------------------------------------
 |
 | Here is where you can register API routes for your application. These
-| routes are loaded by the RouteServiceProvider within a group which
-| is assigned the "api" middleware group. Enjoy building your API!
+| routes are loaded by the RouteServiceProvider and all of them will
+| be assigned to the "api" middleware group. Make something great!
 |
 */
 
-Route::post("account-verification", [ApiResurceController::class, 'account_verification']);
-Route::post("password-change", [ApiResurceController::class, 'password_change']);
-Route::post("update-profile", [ApiResurceController::class, 'update_profile']);
-Route::post("delete-account", [ApiResurceController::class, 'delete_profile']);
-Route::post("become-vendor", [ApiResurceController::class, 'become_vendor']);
-Route::post("post-media-upload", [ApiResurceController::class, 'upload_media']);
-Route::post("cancel-order", [ApiResurceController::class, "orders_cancel"]);
-Route::post("orders", [ApiResurceController::class, "orders_submit"]);
-Route::post("orders-create", [ApiResurceController::class, "orders_create"]);
-Route::post("product-create", [ApiResurceController::class, "product_create"]);
-Route::get("orders", [ApiResurceController::class, "orders_get"]);
-Route::get("orders/{id}", [ApiResurceController::class, "orders_get_by_id"]);
-Route::get("products/{id}", [ApiResurceController::class, "product_get_by_id"]);
-Route::get("order", [ApiResurceController::class, "order"]);
-Route::get("vendors", [ApiResurceController::class, "vendors"]);
-Route::get("delivery-addresses", [ApiResurceController::class, "delivery_addresses"]);
-Route::get("locations", [ApiResurceController::class, "locations"]);
-Route::get("categories", [ApiResurceController::class, "categories"]);
-Route::get('products', [ApiResurceController::class, 'products']);
-Route::get('products-1', [ApiResurceController::class, 'products_1']);
-Route::post('products-delete', [ApiResurceController::class, 'products_delete']);
-Route::post('images-delete', [ApiResurceController::class, 'images_delete']);
-Route::post('chat-start', [ApiResurceController::class, 'chat_start']);
-Route::post('chat-send', [ApiResurceController::class, 'chat_send']);
-Route::post('chat-mark-as-read', [ApiResurceController::class, 'chat_mark_as_read']);
-Route::get('chat-heads', [ApiResurceController::class, 'chat_heads']);
-Route::get('chat-messages', [ApiResurceController::class, 'chat_messages']);
-Route::get("users/me", [ApiResurceController::class, "my_profile"]);
-Route::POST("users/login", [ApiAuthController::class, "login"]);
-Route::POST("users/register", [ApiAuthController::class, "register"]);
-Route::get('api/{model}', [ApiResurceController::class, 'index']);
+
+Route::post('/login', [AuthController::class, 'login']);
+Route::post('/register', [AuthController::class, 'register']);
+Route::post('/reset-password', [AuthController::class, 'resetPassword']);
+Route::post('/send-reset-token', [AuthController::class, 'sendResetToken']);
+
+//service provider registration routes
+Route::post('/register-provider', [ServiceProviderController::class, 'store']);
+Route::put('/provider/{id}', [ServiceProviderController::class, 'update']);
+Route::get('/providers', [ServiceProviderController::class, 'index']);
+Route::get('/provider/{id}', [ServiceProviderController::class, 'show']);
+Route::delete('/provider/{id}', [ServiceProviderController::class, 'destroy']);
+Route::get('/locations', [ServiceProviderController::class, 'locations']);
 
 
+//vets registration routes
+Route::get('/get-vets', [VetsController::class, 'index']);
+Route::get('/get-vets/{id}', [VetsController::class, 'show']);
+Route::post('/vets', [VetsController::class, 'store']);
+Route::put('/vets/{id}', [VetsController::class, 'update']);
+Route::delete('/delete-vets/{id}', [VetsController::class, 'destroy']);
 
-Route::get('manifest', [ApiAuthController::class, 'manifest']);
+//farmers registration routes
+Route::get('/get-farmers', [FarmerController::class, 'index']);
+Route::get('/get-farmers/{id}', [FarmerController::class, 'show']);
+Route::post('/farmers', [FarmerController::class, 'store']);
+Route::put('/farmers/{id}', [FarmerController::class, 'update']);
+Route::delete('/delete-farmers/{id}', [FarmerController::class, 'destroy']);
 
-
-Route::middleware('auth:sanctum')->get('/user', function (Request $request) {
-    return $request->user();
+/* make group route callded v2 and make it have this middleware JwtMiddleware */
+Route::group(['middleware' => JWTMiddleware::class], function () {
+    Route::get('/me', [AuthController::class, 'getAuthenticatedUser']);
 });
 
-Route::get('ajax', function (Request $r) {
 
-    $_model = trim($r->get('model'));
-    $conditions = [];
-    foreach ($_GET as $key => $v) {
-        if (substr($key, 0, 6) != 'query_') {
-            continue;
-        }
-        $_key = str_replace('query_', "", $key);
-        $conditions[$_key] = $v;
-    }
+// //protected routes for authenticated users
+// Route::group(['middleware' => ['auth:api']], function () {
+// Route::group(['middleware' => JWTMiddleware::class], function () {
+    Route::post('/logout', [AuthController::class, 'logout']);
+    Route::get('/user', [AuthController::class, 'getAuthenticatedUser']);
 
-    if (strlen($_model) < 2) {
-        return [
-            'data' => []
-        ];
-    }
+    //farms registration routes
+    Route::resource('/farms', FarmController::class);
+    Route::get('/farmers-farms/{id}', [FarmController::class, 'showFarmerFarms']);
 
-    $model = "App\Models\\" . $_model;
-    $search_by_1 = trim($r->get('search_by_1'));
-    $search_by_2 = trim($r->get('search_by_2'));
+    //farm animals registration routes
+    Route::resource('/animals', FarmAnimalController::class);
+    Route::get('/farm-animals/{id}', [FarmAnimalController::class, 'getFarmAnimalsByFarm']);
 
-    $q = trim($r->get('q'));
+    //health records registration routes
+    Route::resource('/health-records', HealthRecordController::class);
+    Route::get('/health-records-by-animal/{id}', [HealthRecordController::class, 'showHealthRecordsByAnimal']);
+    Route::get('/health-records-by-farm/{id}', [HealthRecordController::class, 'showHealthRecordsByFarm']);
+    Route::get('/health-records-by-vet/{id}', [HealthRecordController::class, 'showHealthRecordsByVet']);
+    Route::get('/health-records-by-date/{date}', [HealthRecordController::class, 'showHealthRecordsByDate']);
 
-    $res_1 = $model::where(
-        $search_by_1,
-        'like',
-        "%$q%"
-    )
-        ->where($conditions)
-        ->limit(20)->get();
-    $res_2 = [];
+    //product registration routes
+    Route::resource('/products', ProductController::class);
+    Route::get('/product/search', [ProductController::class, 'search']);
+    Route::get('/categories', [ProductController::class, 'categories']);
 
-    if ((count($res_1) < 20) && (strlen($search_by_2) > 1)) {
-        $res_2 = $model::where(
-            $search_by_2,
-            'like',
-            "%$q%"
-        )
-            ->where($conditions)
-            ->limit(20)->get();
-    }
 
-    $data = [];
-    foreach ($res_1 as $key => $v) {
-        $name = "";
-        if (isset($v->name)) {
-            $name = " - " . $v->name;
-        }
-        $data[] = [
-            'id' => $v->id,
-            'text' => "#$v->id" . $name
-        ];
-    }
-    foreach ($res_2 as $key => $v) {
-        $name = "";
-        if (isset($v->name)) {
-            $name = " - " . $v->name;
-        }
-        $data[] = [
-            'id' => $v->id,
-            'text' => "#$v->id" . $name
-        ];
-    }
+    //cart registration routes
+    Route::resource('/cart', CartController::class);
 
-    return [
-        'data' => $data
-    ];
-});
+
+    // //order registration routes
+    // Route::post('/order', [OrderController::class, 'store']);
+    // Route::get('/order', [OrderController::class, 'index']);
+
+    //paravet request registration routes
+    Route::resource('/paravet-request', ParavetRequestController::class);
+    Route::post('/get-available-paravets', [ParavetRequestController::class, 'availableParavets']);
+    Route::get('/paravet-requests-stats/{id}', [ParavetRequestController::class, 'getTotals']);
+      Route::get('/get-requests/{id}', [ParavetRequestController::class, 'getRequestsOfAFarmer']);
+
+    //paravet ratings
+    Route::resource('/rate-paravet', RatingController::class);
+    Route::get('/average-ratings', [RatingController::class, 'averageRating']);
+
+    //notifications
+    Route::resource('/notifications', NotificationController::class);
+
+    //get user roles
+    Route::get('/user-roles', [UserRoleController::class, 'show']);
+
